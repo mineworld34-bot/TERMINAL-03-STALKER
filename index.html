@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Архив НОО — Терминал 3</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+:root{
+  --green:#00ff41;--green-dim:#00aa2a;--green-dark:#003300;--green-bg:rgba(0,255,65,0.03);
+  --amber:#ffb000;--amber-dim:#aa7700;--red:#ff0040;--red-dim:#aa002a;--cyan:#00e5ff;
+  --bg:#0a0a0a;--bg2:#0d0d0d;--panel:#0d1a0d;--panel2:#111a11;--border:#1a3a1a;--border-dim:#0f1f0f;
+}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);font-family:'Share Tech Mono',monospace;color:var(--green);}
+
+/* ============ CRT OVERLAY ============ */
+#crt-overlay{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1000;}
+#crt-overlay::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;
+  background:linear-gradient(rgba(18,16,16,0) 50%,rgba(0,0,0,0.25) 50%);background-size:100% 4px;}
+#crt-overlay::after{content:'';position:absolute;top:0;left:0;width:100%;height:100%;
+  background:radial-gradient(ellipse at center,rgba(0,0,0,0) 60%,rgba(0,0,0,0.4) 100%);}
+#scanline{position:fixed;left:0;width:100%;height:6px;z-index:1001;pointer-events:none;
+  background:linear-gradient(rgba(0,255,65,0),rgba(0,255,65,0.08),rgba(0,255,65,0));
+  animation:scanmove 6s linear infinite;}
+@keyframes scanmove{0%{top:-6px}100%{top:100%}}
+
+.glow{text-shadow:0 0 5px currentColor,0 0 10px rgba(0,255,65,0.3);}
+.glow-amber{color:var(--amber);text-shadow:0 0 5px var(--amber),0 0 12px rgba(255,176,0,0.3);}
+.glow-red{color:var(--red);text-shadow:0 0 5px var(--red);}
+@keyframes glitch2{0%,100%{opacity:1}50%{opacity:0.97}75%{opacity:1}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes pulse{0%,100%{opacity:0.6}50%{opacity:1}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes borderGlow{0%,100%{box-shadow:0 0 5px rgba(0,255,65,0.2)}50%{box-shadow:0 0 20px rgba(0,255,65,0.4)}}
+@keyframes warningPulse{0%,100%{opacity:0.3}50%{opacity:1}}
+@keyframes radpulse{0%,100%{filter:drop-shadow(0 0 4px rgba(255,176,0,0.5))}50%{filter:drop-shadow(0 0 16px rgba(255,176,0,0.9))}}
+@keyframes surgeFlash{0%,100%{box-shadow:none}50%{box-shadow:0 0 40px rgba(255,0,64,0.5)}}
+
+/* ============ SCREENS ============ */
+.screen{position:absolute;top:0;left:0;width:100%;height:100%;display:none;overflow:hidden;}
+.screen.active{display:flex;}
+
+/* ============ HOME SCREEN ============ */
+#home{flex-direction:column;align-items:center;justify-content:center;
+  background:var(--bg);position:relative;}
+#home::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;
+  background:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 30h60M30 0v60' stroke='%23003300' stroke-width='0.3' fill='none' opacity='0.3'/%3E%3C/svg%3E");
+  opacity:0.5;}
+#home-content{position:relative;z-index:2;text-align:center;max-width:720px;padding:40px;
+  display:flex;flex-direction:column;align-items:center;}
+
+.logo-icon{display:flex;align-items:center;justify-content:center;margin-bottom:22px;
+  animation:radpulse 3s ease-in-out infinite;}
+.logo-icon svg{display:block;}
+
+#home h1{font-size:32px;letter-spacing:8px;margin-bottom:5px;color:var(--green);
+  text-shadow:0 0 10px var(--green),0 0 40px rgba(0,255,65,0.2);}
+#home .subtitle{font-size:13px;color:var(--green-dim);letter-spacing:4px;margin-bottom:8px;}
+#home .lvl-badge{font-size:12px;color:var(--amber);letter-spacing:3px;margin-bottom:24px;
+  border:1px solid var(--amber-dim);padding:3px 14px;background:rgba(255,176,0,0.05);}
+#home .divider{width:300px;height:1px;background:linear-gradient(90deg,transparent,var(--green-dim),transparent);
+  margin:0 auto 25px;}
+#home .sys-info{font-size:11px;color:#335533;line-height:2;margin-bottom:28px;}
+#home .sys-info span{color:var(--green-dim);}
+
+.warning-bar{background:rgba(255,0,64,0.08);border:1px solid rgba(255,0,64,0.2);
+  padding:8px 20px;margin-bottom:30px;font-size:11px;color:var(--red);
+  letter-spacing:1px;animation:warningPulse 3s infinite;}
+
+.btn-group{display:flex;gap:15px;justify-content:center;flex-wrap:wrap;}
+.btn{padding:12px 30px;border:1px solid var(--border);background:rgba(0,255,65,0.03);
+  color:var(--green);font-family:'Share Tech Mono',monospace;font-size:14px;
+  cursor:pointer;letter-spacing:2px;position:relative;overflow:hidden;transition:all 0.3s;}
+.btn:hover{border-color:var(--green);background:rgba(0,255,65,0.08);
+  box-shadow:0 0 15px rgba(0,255,65,0.15),inset 0 0 15px rgba(0,255,65,0.05);}
+.btn:active{transform:scale(0.98);}
+.btn::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(0,255,65,0.1),transparent);transition:left 0.5s;}
+.btn:hover::before{left:100%;}
+.btn-hack{border-color:var(--amber-dim);color:var(--amber);background:rgba(255,176,0,0.03);}
+.btn-hack:hover{border-color:var(--amber);background:rgba(255,176,0,0.08);
+  box-shadow:0 0 15px rgba(255,176,0,0.15),inset 0 0 15px rgba(255,176,0,0.05);}
+
+.corner{position:absolute;width:20px;height:20px;border-color:var(--green-dim);border-style:solid;border-width:0;}
+.corner-tl{top:15px;left:15px;border-top-width:1px;border-left-width:1px;}
+.corner-tr{top:15px;right:15px;border-top-width:1px;border-right-width:1px;}
+.corner-bl{bottom:15px;left:15px;border-bottom-width:1px;border-left-width:1px;}
+.corner-br{bottom:15px;right:15px;border-bottom-width:1px;border-right-width:1px;}
+
+.footer-info{position:absolute;bottom:20px;font-size:10px;color:#223322;letter-spacing:2px;text-align:center;}
+.signature{position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:11px;
+  color:var(--green-dim);letter-spacing:2px;z-index:1002;opacity:0.9;pointer-events:none;
+  text-shadow:0 0 6px rgba(0,255,65,0.4);}
+.home-sign{margin-top:22px;font-size:13px;color:var(--green);letter-spacing:3px;
+  opacity:0.95;text-shadow:0 0 8px rgba(0,255,65,0.5);}
+
+/* ============ AUTH SCREEN ============ */
+#auth{flex-direction:column;align-items:center;justify-content:center;background:var(--bg);}
+#auth-box{width:420px;border:1px solid var(--border);background:var(--panel);position:relative;}
+#auth-header{background:rgba(0,255,65,0.05);border-bottom:1px solid var(--border);
+  padding:12px 20px;display:flex;justify-content:space-between;align-items:center;}
+#auth-header .title{font-size:14px;letter-spacing:2px;color:var(--green);}
+#auth-header .close{cursor:pointer;color:var(--green-dim);font-size:18px;}
+#auth-header .close:hover{color:var(--red);}
+#auth-body{padding:30px;}
+#auth-body label{display:block;font-size:11px;color:var(--green-dim);letter-spacing:2px;margin-bottom:6px;margin-top:15px;}
+#auth-body label:first-child{margin-top:0;}
+#auth-body input{width:100%;padding:10px 12px;background:rgba(0,10,0,0.6);border:1px solid var(--border);
+  color:var(--green);font-family:'Share Tech Mono',monospace;font-size:14px;outline:none;transition:all 0.2s;}
+#auth-body input:focus{border-color:var(--green);box-shadow:0 0 10px rgba(0,255,65,0.1);}
+#auth-body input::placeholder{color:#224422;}
+#auth-error{color:var(--red);font-size:11px;margin-top:12px;min-height:16px;text-align:center;}
+#auth-btn{width:100%;margin-top:20px;padding:12px;border:1px solid var(--green-dim);
+  background:rgba(0,255,65,0.05);color:var(--green);font-family:'Share Tech Mono',monospace;
+  font-size:14px;cursor:pointer;letter-spacing:3px;transition:all 0.3s;}
+#auth-btn:hover{border-color:var(--green);background:rgba(0,255,65,0.1);box-shadow:0 0 15px rgba(0,255,65,0.2);}
+#auth-footer{text-align:center;margin-top:20px;font-size:10px;color:#334433;}
+
+/* ============ HACK SCREEN ============ */
+#hack{flex-direction:column;background:var(--bg);}
+#hack-header{display:flex;justify-content:space-between;align-items:center;
+  padding:8px 20px;background:var(--panel);border-bottom:1px solid var(--border);font-size:13px;}
+#hack-header .title{letter-spacing:2px;}
+#hack-header .status{color:var(--amber);}
+#hack-main{display:flex;flex:1;overflow:hidden;}
+#hack-sidebar{width:55px;background:var(--panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;padding:15px 0;gap:10px;}
+.stage-dot{width:32px;height:32px;border:1px solid var(--border-dim);border-radius:3px;
+  display:flex;align-items:center;justify-content:center;font-size:12px;color:#333;
+  transition:all 0.3s;position:relative;}
+.stage-dot.active{border-color:var(--green);color:var(--green);
+  box-shadow:0 0 10px rgba(0,255,65,0.2);animation:borderGlow 2s infinite;}
+.stage-dot.done{border-color:var(--green);color:var(--bg);background:var(--green);}
+.stage-dot.locked{border-color:#1a1a1a;color:#222;}
+#game-area{flex:1;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;}
+.game-screen{display:none;width:100%;height:100%;flex-direction:column;align-items:center;justify-content:center;}
+.game-screen.active{display:flex;}
+#hack-console{height:90px;background:rgba(0,5,0,0.8);border-top:1px solid var(--border);
+  padding:8px 15px;overflow-y:auto;font-size:11px;color:var(--green-dim);line-height:1.6;}
+.log-line{opacity:0.7;}.log-line.warn{color:var(--amber);}.log-line.err{color:var(--red);}
+.log-line.success{color:var(--green);opacity:1;}
+
+.game-title{font-size:15px;letter-spacing:3px;color:var(--amber);margin-bottom:8px;text-align:center;}
+.game-subtitle{font-size:11px;color:var(--green-dim);margin-bottom:15px;text-align:center;max-width:600px;}
+
+/* ============ GAME 1: SEQUENCER (FREQUENCY) ============ */
+#g1-canvas{border:1px solid var(--border);background:rgba(0,5,0,0.4);}
+#g1-freq{font-size:26px;letter-spacing:2px;margin:14px 0 4px;transition:color 0.15s;}
+#g1-freq.ok{color:var(--green);text-shadow:0 0 8px var(--green);}
+#g1-freq.bad{color:var(--red);text-shadow:0 0 8px var(--red);}
+.slider-group{display:flex;flex-direction:column;gap:10px;margin-top:8px;width:520px;}
+.slider-row{display:flex;align-items:center;gap:10px;font-size:12px;}
+.slider-row label{width:150px;text-align:right;color:var(--green-dim);}
+.slider-row input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:var(--border);outline:none;}
+.slider-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;
+  background:var(--green);border-radius:50%;cursor:pointer;box-shadow:0 0 6px rgba(0,255,65,0.4);}
+.slider-row .val{width:60px;font-size:10px;color:var(--amber);}
+#g1-entry{display:flex;align-items:center;gap:10px;margin-top:16px;}
+#g1-entry label{font-size:12px;color:var(--green-dim);letter-spacing:1px;}
+#g1-input{width:120px;padding:8px 10px;background:rgba(0,10,0,0.6);border:1px solid var(--border);
+  color:var(--green);font-family:'Share Tech Mono',monospace;font-size:16px;outline:none;text-align:center;letter-spacing:2px;}
+#g1-input:focus{border-color:var(--green);box-shadow:0 0 10px rgba(0,255,65,0.1);}
+#g1-input:disabled{opacity:0.35;cursor:not-allowed;}
+#g1-confirm{padding:8px 22px;font-size:13px;}
+#g1-status{font-size:12px;margin-top:12px;min-height:18px;letter-spacing:1px;}
+
+/* ============ GAME 2: SIMON MELODY ============ */
+#simon-info{font-size:14px;letter-spacing:1px;margin-bottom:6px;}
+#simon-info .st{color:var(--amber);}
+#simon-hint{font-size:11px;color:var(--green-dim);margin-bottom:16px;min-height:16px;letter-spacing:1px;}
+#simon-grid{display:grid;grid-template-columns:repeat(3,120px);grid-template-rows:repeat(2,120px);gap:14px;}
+.simon-btn{border:2px solid var(--border);border-radius:6px;cursor:pointer;position:relative;
+  display:flex;align-items:center;justify-content:center;font-size:26px;transition:all 0.08s;
+  background:rgba(0,10,0,0.5);color:#2a2a2a;user-select:none;}
+.simon-btn:hover{border-color:var(--green-dim);}
+.simon-btn.lit{transform:scale(0.96);}
+.simon-btn.c0{--sc:#ff0040;} .simon-btn.c1{--sc:#ffb000;} .simon-btn.c2{--sc:#00ff41;}
+.simon-btn.c3{--sc:#00e5ff;} .simon-btn.c4{--sc:#aa44ff;} .simon-btn.c5{--sc:#ffee00;}
+.simon-btn.lit{border-color:var(--sc);color:var(--sc);background:rgba(255,255,255,0.06);
+  box-shadow:0 0 22px var(--sc),inset 0 0 18px var(--sc);text-shadow:0 0 10px var(--sc);}
+#simon-grid.locked{pointer-events:none;opacity:0.85;}
+
+/* ============ GAME 3: WIRES ============ */
+#g3-phase{font-size:13px;letter-spacing:1px;margin-bottom:4px;color:var(--amber);}
+#g3-hint{font-size:11px;color:var(--green-dim);margin-bottom:10px;min-height:16px;letter-spacing:1px;text-align:center;}
+#wire-wrap{position:relative;width:580px;height:430px;border:1px solid var(--border-dim);background:rgba(0,5,0,0.35);}
+#wire-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
+.wire-node{position:absolute;width:26px;height:26px;border-radius:50%;transform:translate(-50%,-50%);
+  border:2px solid #000;cursor:pointer;box-shadow:0 0 10px currentColor;transition:transform 0.1s;}
+.wire-node:hover{transform:translate(-50%,-50%) scale(1.18);}
+.wire-node.done{cursor:default;box-shadow:0 0 4px currentColor;opacity:0.9;}
+.wire-node.cut{opacity:0.2;box-shadow:none;cursor:default;}
+#wire-legend{display:flex;gap:12px;margin-top:12px;font-size:10px;color:var(--green-dim);flex-wrap:wrap;justify-content:center;max-width:600px;}
+#wire-legend span b{color:#fff;}
+#g3-status{font-size:12px;margin-top:8px;min-height:18px;letter-spacing:1px;}
+
+/* ============ GAME 4: CORE STABILIZE ============ */
+#core-info{font-size:13px;letter-spacing:1px;margin-bottom:6px;}
+#core-hold{font-size:16px;color:var(--amber);margin-bottom:14px;letter-spacing:1px;}
+#core-bars{display:flex;gap:26px;}
+.core-bar{width:64px;height:280px;border:1px solid var(--border);background:rgba(0,8,0,0.6);
+  position:relative;cursor:pointer;border-radius:4px;overflow:hidden;user-select:none;}
+.core-bar .zone{position:absolute;left:0;width:100%;background:rgba(0,255,65,0.12);
+  border-top:1px dashed var(--green-dim);border-bottom:1px dashed var(--green-dim);}
+.core-bar .fill{position:absolute;left:0;bottom:0;width:100%;background:var(--amber);
+  box-shadow:0 0 14px var(--amber);transition:background 0.1s;}
+.core-bar .cap{position:absolute;left:0;width:100%;height:4px;background:#fff;opacity:0.85;}
+.core-bar .lbl{position:absolute;top:4px;left:0;width:100%;text-align:center;font-size:10px;color:#88aa88;z-index:2;}
+.core-bar.ingreen .fill{background:var(--green);box-shadow:0 0 16px var(--green);}
+#core-status{font-size:12px;margin-top:14px;min-height:18px;letter-spacing:1px;}
+
+/* ============ GAME 5: ROBOT ROUTE ============ */
+#robot-wrap{display:flex;gap:26px;align-items:flex-start;}
+#robot-grid{display:grid;gap:3px;background:var(--border-dim);padding:3px;border:1px solid var(--border);}
+.rcell{width:48px;height:48px;background:rgba(0,10,0,0.6);display:flex;align-items:center;
+  justify-content:center;font-size:22px;position:relative;transition:background 0.1s;}
+.rcell.wall{background:#161616;border:1px solid #2a2a2a;}
+.rcell.wall::after{content:'▓';color:#333;font-size:20px;}
+.rcell.start{box-shadow:inset 0 0 0 2px var(--green-dim);}
+.rcell.target{box-shadow:inset 0 0 0 2px var(--amber);}
+.rcell.target::after{content:'◎';color:var(--amber);text-shadow:0 0 8px var(--amber);}
+.rcell.robot::after{content:'▲';color:var(--green);text-shadow:0 0 10px var(--green);}
+.rcell.robot.crash::after{content:'✖';color:var(--red);text-shadow:0 0 10px var(--red);}
+.rcell.path{background:rgba(0,255,65,0.07);}
+#robot-panel{display:flex;flex-direction:column;gap:10px;width:230px;}
+#robot-pad{display:grid;grid-template-columns:repeat(3,60px);grid-template-rows:repeat(3,44px);gap:6px;justify-content:center;}
+.rbtn{border:1px solid var(--border);background:rgba(0,10,0,0.5);color:var(--green);
+  font-family:'Share Tech Mono',monospace;font-size:20px;cursor:pointer;border-radius:4px;transition:all 0.12s;}
+.rbtn:hover{border-color:var(--green);box-shadow:0 0 8px rgba(0,255,65,0.15);}
+.rbtn:active{transform:scale(0.94);}
+.rbtn.empty{visibility:hidden;}
+#robot-queue{min-height:52px;border:1px solid var(--border-dim);background:rgba(0,5,0,0.4);
+  padding:8px;font-size:20px;letter-spacing:6px;color:var(--amber);word-break:break-all;line-height:1.5;}
+#robot-actions{display:flex;gap:8px;}
+#robot-actions .btn{flex:1;padding:10px 0;font-size:12px;text-align:center;}
+#robot-status{font-size:12px;min-height:18px;letter-spacing:1px;}
+
+/* ============ DOCUMENT SCREEN ============ */
+#document{flex-direction:column;background:var(--bg);overflow-y:auto;padding:40px 60px;}
+#document h2{color:var(--amber);font-size:15px;letter-spacing:2px;margin-bottom:4px;}
+#document h3{color:var(--green-dim);font-size:11px;margin-bottom:20px;}
+#document .doc-text{color:var(--green);font-size:12px;line-height:1.9;white-space:pre-wrap;max-width:820px;}
+#document .comment{color:var(--amber);border-left:2px solid var(--amber);padding-left:15px;margin-top:20px;
+  font-size:12px;line-height:1.9;white-space:pre-wrap;max-width:820px;}
+#document .password-block{margin-top:24px;padding:12px 18px;border:1px solid var(--red);
+  display:inline-block;background:rgba(255,0,64,0.05);}
+#document .password-block .label{font-size:10px;color:var(--red-dim);letter-spacing:2px;margin-bottom:4px;}
+#document .password-block .value{font-size:18px;color:var(--red);letter-spacing:4px;}
+
+/* ============ TRANSITION ============ */
+#transition{position:fixed;top:0;left:0;width:100%;height:100%;display:none;
+  align-items:center;justify-content:center;z-index:500;background:var(--bg);}
+#transition-text{color:var(--green);font-size:13px;line-height:1.8;text-align:center;white-space:pre-wrap;}
+
+/* ============ BOOT ============ */
+#boot{position:fixed;top:0;left:0;width:100%;height:100%;padding:40px;
+  color:var(--green);font-size:13px;line-height:1.8;z-index:600;
+  background:var(--bg);display:none;flex-direction:column;}
+#boot.active{display:flex;}
+#boot-text{white-space:pre-wrap;}
+
+/* ============ DATA RAIN BG ============ */
+#data-rain{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:-1;opacity:0.04;}
+</style>
+</head>
+<body>
+
+<div id="crt-overlay"></div>
+<div id="scanline"></div>
+<canvas id="data-rain"></canvas>
+
+<div id="boot"><div id="boot-text"></div></div>
+
+<!-- ============ HOME ============ -->
+<div class="screen active" id="home">
+  <div class="corner corner-tl"></div>
+  <div class="corner corner-tr"></div>
+  <div class="corner corner-bl"></div>
+  <div class="corner corner-br"></div>
+  <div id="home-content">
+    <div class="logo-icon">
+      <svg viewBox="0 0 100 100" width="76" height="76" aria-label="radiation">
+        <circle cx="50" cy="50" r="47" fill="none" stroke="#ffb000" stroke-width="2" opacity="0.45"/>
+        <g fill="#ffb000">
+          <path d="M41.5 35.28 L27.5 11.03 A45 45 0 0 1 72.5 11.03 L58.5 35.28 A17 17 0 0 0 41.5 35.28 Z"/>
+          <path d="M67 50 L95 50 A45 45 0 0 1 72.5 88.97 L58.5 64.72 A17 17 0 0 0 67 50 Z"/>
+          <path d="M41.5 64.72 L27.5 88.97 A45 45 0 0 1 5 50 L33 50 A17 17 0 0 0 41.5 64.72 Z"/>
+        </g>
+        <circle cx="50" cy="50" r="10" fill="#ffb000"/>
+        <circle cx="50" cy="50" r="10" fill="none" stroke="#0a0a0a" stroke-width="3"/>
+      </svg>
+    </div>
+    <h1 class="glow">АРХИВ НОО</h1>
+    <div class="subtitle">НАУЧНО-ОБОРОННАЯ ОРГАНИЗАЦИЯ</div>
+    <div class="lvl-badge">ТЕРМИНАЛ 3 // АППАРАТНОЕ ВМЕШАТЕЛЬСТВО</div>
+    <div class="divider"></div>
+    <div class="sys-info">
+      ТЕРМИНАЛ: <span>NOO-TERM-003</span><br>
+      ОБЪЕКТ: <span>РАДАР / НИИЧАЗ — ОТДЕЛ ПОЛЕВЫХ ИСПЫТАНИЙ</span><br>
+      ПОСЛЕДНИЙ ВХОД: <span>14.03.2019 — guest_704</span><br>
+      СТАТУС СИСТЕМЫ: <span class="glow-amber">ЧАСТИЧНЫЙ СБОЙ</span>
+    </div>
+    <div class="warning-bar">⚠ НЕСТАБИЛЬНОЕ ПИТАНИЕ — ЗАФИКСИРОВАНЫ СКАЧКИ НАПРЯЖЕНИЯ В СЕТИ КОМПЛЕКСА</div>
+    <div class="btn-group">
+      <button class="btn" onclick="showScreen('auth')">[ АВТОРИЗАЦИЯ ]</button>
+      <button class="btn btn-hack" onclick="startHackPath()">[ ВЗЛОМ СИСТЕМЫ ]</button>
+    </div>
+    <div class="home-sign">made by Boris</div>
+  </div>
+  <div class="footer-info">НИИЧАЗ СИСТЕМНЫЙ ТЕРМИНАЛ v3.01 // УРОВЕНЬ ДОПУСКА: СЕКРЕТНО</div>
+</div>
+
+<!-- ============ AUTH ============ -->
+<div class="screen" id="auth">
+  <div id="auth-box">
+    <div id="auth-header">
+      <span class="title glow">АВТОРИЗАЦИЯ</span>
+      <span class="close" onclick="showScreen('home')">✕</span>
+    </div>
+    <div id="auth-body">
+      <label>ИДЕНТИФИКАТОР</label>
+      <input type="text" id="auth-login" placeholder="Введите логин..." autocomplete="off" spellcheck="false">
+      <label>КЛЮЧ ДОСТУПА</label>
+      <input type="password" id="auth-pass" placeholder="Введите пароль..." autocomplete="off">
+      <div id="auth-error"></div>
+      <button id="auth-btn" onclick="tryAuth()">ВОЙТИ</button>
+      <div id="auth-footer">Нет доступа? Используйте протокол взлома</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ HACK ============ -->
+<div class="screen" id="hack">
+  <div id="hack-header">
+    <div class="title glow">ПРОТОКОЛ ВЗЛОМА // ТЕРМИНАЛ-3</div>
+    <div class="status" id="hack-status">ЭТАП: 1/5</div>
+  </div>
+  <div id="hack-main">
+    <div id="hack-sidebar">
+      <div class="stage-dot active" data-stage="1">1</div>
+      <div class="stage-dot locked" data-stage="2">2</div>
+      <div class="stage-dot locked" data-stage="3">3</div>
+      <div class="stage-dot locked" data-stage="4">4</div>
+      <div class="stage-dot locked" data-stage="5">5</div>
+    </div>
+    <div id="game-area">
+
+      <!-- GAME 1: SEQUENCER / FREQUENCY -->
+      <div class="game-screen" id="game1">
+        <div class="game-title glow-amber">СЕКВЕНСОР // ОПРЕДЕЛЕНИЕ ЧАСТОТЫ</div>
+        <div class="game-subtitle">Несущая (амбер) держит частоту 5 секунд, затем плавно перетекает в новую. Совместите свою волну (зелёная) ползунками в стабильной фазе: пока не совпало — показатель красный, при совпадении — зелёный. Тогда впишите частоту в поле и подтвердите</div>
+        <canvas id="g1-canvas" width="560" height="170"></canvas>
+        <div id="g1-freq" class="bad">ЧАСТОТА: --- Гц</div>
+        <div class="slider-group">
+          <div class="slider-row"><label>Настройка частоты:</label><input type="range" id="sl-freq" min="40" max="240" value="120"><span class="val" id="val-freq">120 Гц</span></div>
+          <div class="slider-row"><label>Точная подстройка:</label><input type="range" id="sl-fine" min="-8" max="8" value="0"><span class="val" id="val-fine">0</span></div>
+        </div>
+        <div id="g1-entry">
+          <label>ВВЕДИТЕ ЧАСТОТУ:</label>
+          <input type="text" id="g1-input" placeholder="___" maxlength="3" disabled autocomplete="off" spellcheck="false">
+          <button class="btn btn-hack" id="g1-confirm" onclick="g1Confirm()">[ ПОДТВЕРДИТЬ ]</button>
+        </div>
+        <div id="g1-status"></div>
+      </div>
+
+      <!-- GAME 2: SIMON MELODY -->
+      <div class="game-screen" id="game2">
+        <div class="game-title glow-amber">ПОВТОРИ СИГНАЛ // ЗВУКОВОЙ КЛЮЧ</div>
+        <div class="game-subtitle">Запомните последовательность нот и повторите её. С каждым этапом цепочка становится длиннее. Ошибка сбрасывает прогресс</div>
+        <div id="simon-info">ЭТАП: <span class="st" id="simon-stage">1</span>/6</div>
+        <div id="simon-hint">СЛУШАЙТЕ...</div>
+        <div id="simon-grid"></div>
+      </div>
+
+      <!-- GAME 3: WIRES -->
+      <div class="game-screen" id="game3">
+        <div class="game-title glow-amber">РАСПАЙКА ШЛЕЙФА // ОБЕЗВРЕЖИВАНИЕ</div>
+        <div class="game-subtitle">Сначала соедините каждую точку слева с точкой того же цвета справа. Затем перережьте провода строго по порядку радуги, чтобы снять защитный контур</div>
+        <div id="g3-phase">ФАЗА 1: СОЕДИНИТЕ ПРОВОДА ПО ЦВЕТАМ</div>
+        <div id="g3-hint"></div>
+        <div id="wire-wrap"><svg id="wire-svg"></svg></div>
+        <div id="wire-legend"></div>
+        <div id="g3-status"></div>
+      </div>
+
+      <!-- GAME 4: CORE STABILIZE -->
+      <div class="game-screen" id="game4">
+        <div class="game-title glow-amber">СТАБИЛИЗАЦИЯ ЯДРА // РЕАКЦИЯ</div>
+        <div class="game-subtitle">Четыре канала теряют заряд с разной скоростью. Кликайте по каналам, чтобы поднять заряд, и выведите ВСЕ ЧЕТЫРЕ в зелёную зону одновременно</div>
+        <div id="core-info">ЗАРЯД КАНАЛОВ: выведите все в зелёную зону</div>
+        <div id="core-hold">В ЗЕЛЁНОЙ ЗОНЕ: 0 / 4</div>
+        <div id="core-bars"></div>
+        <div id="core-status"></div>
+      </div>
+
+      <!-- GAME 5: ROBOT ROUTE -->
+      <div class="game-screen" id="game5">
+        <div class="game-title glow-amber">ДИАГНОСТИЧЕСКИЙ ДРОН // МАРШРУТ</div>
+        <div class="game-subtitle">Заранее задайте программу движения стрелками, затем запустите дрон. Он должен дойти до маяка ◎, не врезавшись в стены</div>
+        <div id="robot-wrap">
+          <div id="robot-grid"></div>
+          <div id="robot-panel">
+            <div id="robot-pad"></div>
+            <div id="robot-queue"></div>
+            <div id="robot-actions">
+              <button class="btn" onclick="robotUndo()">[ ← ]</button>
+              <button class="btn" onclick="robotClear()">[ СБРОС ]</button>
+              <button class="btn btn-hack" onclick="robotRun()">[ ЗАПУСК ]</button>
+            </div>
+            <div id="robot-status"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <div id="hack-console"></div>
+</div>
+
+<div id="transition"><div id="transition-text"></div></div>
+<div class="screen" id="document"></div>
+
+<script>
+// ==================== SOUND ====================
+class SFX{
+  constructor(){this.ctx=null;}
+  init(){if(this.ctx)return;this.ctx=new(window.AudioContext||window.webkitAudioContext)();}
+  _t(f,d,type='square',v=0.06){if(!this.ctx)return;const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+    o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(this.ctx.destination);
+    o.start();g.gain.exponentialRampToValueAtTime(0.001,this.ctx.currentTime+d);o.stop(this.ctx.currentTime+d);}
+  _n(d,v=0.03){if(!this.ctx)return;const b=this.ctx.createBuffer(1,this.ctx.sampleRate*d,this.ctx.sampleRate);
+    const data=b.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;
+    const s=this.ctx.createBufferSource(),g=this.ctx.createGain();s.buffer=b;g.gain.value=v;
+    s.connect(g);g.connect(this.ctx.destination);s.start();g.gain.exponentialRampToValueAtTime(0.001,this.ctx.currentTime+d);}
+  key(){this._t(800,0.05,'square',0.03);this._n(0.03,0.02);}
+  success(){this._t(523,0.1,'sine',0.08);setTimeout(()=>this._t(659,0.1,'sine',0.08),100);setTimeout(()=>this._t(784,0.2,'sine',0.08),200);}
+  error(){this._t(200,0.3,'sawtooth',0.06);this._n(0.15,0.05);}
+  click(){this._t(1200,0.03,'square',0.03);}
+  alarm(){this._t(440,0.15,'square',0.05);setTimeout(()=>this._t(520,0.15,'square',0.05),200);}
+  boot(){this._t(400,0.08,'sine',0.04);setTimeout(()=>this._t(600,0.08,'sine',0.04),150);}
+  unlock(){this._t(880,0.12,'sine',0.08);setTimeout(()=>this._t(1100,0.12,'sine',0.08),120);setTimeout(()=>this._t(1320,0.2,'sine',0.08),240);}
+  type(){this._t(600+Math.random()*200,0.02,'square',0.02);}
+  deny(){this._t(150,0.4,'sawtooth',0.08);this._n(0.2,0.06);}
+  surge(){this._t(90,0.3,'sawtooth',0.09);this._n(0.25,0.07);}
+  note(f){this._t(f,0.32,'sine',0.09);}
+  step(){this._t(520,0.05,'square',0.04);}
+}
+const sfx=new SFX();
+document.addEventListener('click',()=>sfx.init(),{once:true});
+document.addEventListener('keydown',()=>sfx.init(),{once:true});
+
+// ==================== DATA RAIN ====================
+(function(){
+  const c=document.getElementById('data-rain'),ctx=c.getContext('2d');
+  c.width=window.innerWidth;c.height=window.innerHeight;
+  const cols=Math.floor(c.width/14),drops=Array(cols).fill(1);
+  const chars='01アイウエオカキクケコ日月火水木金土НИИЧАЗ';
+  function draw(){
+    ctx.fillStyle='rgba(0,0,0,0.05)';ctx.fillRect(0,0,c.width,c.height);
+    ctx.fillStyle='#00ff41';ctx.font='12px Share Tech Mono';
+    for(let i=0;i<drops.length;i++){
+      ctx.fillText(chars[Math.floor(Math.random()*chars.length)],i*14,drops[i]*14);
+      if(drops[i]*14>c.height&&Math.random()>0.975)drops[i]=0;drops[i]++;
+    }
+  }
+  setInterval(draw,50);
+  window.addEventListener('resize',()=>{c.width=window.innerWidth;c.height=window.innerHeight;});
+})();
+
+// ==================== SCREEN NAV ====================
+function showScreen(id){
+  sfx.click();
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ==================== AUTH (decoy) ====================
+const CREDS={login:'BorisTOP',password:'SpyTOP'};
+function tryAuth(){
+  const l=document.getElementById('auth-login').value.trim();
+  const p=document.getElementById('auth-pass').value.trim();
+  const err=document.getElementById('auth-error');
+  if(l===CREDS.login&&p===CREDS.password){
+    sfx.unlock();err.style.color='var(--green)';err.textContent='ДОСТУП РАЗРЕШЁН';
+    setTimeout(()=>showDocument(),1000);
+  }else{
+    sfx.deny();err.style.color='var(--red)';err.textContent='ОШИБКА: НЕВЕРНЫЙ ИДЕНТИФИКАТОР ИЛИ КЛЮЧ';
+    document.getElementById('auth-login').value='';document.getElementById('auth-pass').value='';
+  }
+}
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('auth').classList.contains('active')&&e.key==='Enter')tryAuth();
+});
+
+// ==================== HACK PATH ====================
+async function startHackPath(){showScreen('hack');await runBoot();startGame(1);}
+
+// ==================== BOOT ====================
+const bootLines=[
+  'НИИЧАЗ СИСТЕМНЫЙ ТЕРМИНАЛ v3.01','(c) НОО — Научно-Оборонная Организация',
+  '════════════════════════════════════════','',
+  'Инициализация аппаратного обеспечения...',
+  'ЦПУ: МК-90М ...................... [OK]',
+  'ОЗУ: 2048 КБ .................... [OK]',
+  'Контроллер энергосети ............ [СБОЙ]',
+  'Резервные генераторы ............. [ОТКЛ]','',
+  'Загрузка модулей безопасности...',
+  'Модуль шифрования ............... [OK]',
+  'Модуль аутентификации ........... [OK]',
+  'Диагностический модуль .......... [OK]','',
+  '⚠ ВНИМАНИЕ: Нестабильное питание комплекса',
+  '⚠ Зафиксированы скачки напряжения в сети',
+  'Последний вход: 14.03.2019 — guest_704','',
+  'АКТИВАЦИЯ ПРОТОКОЛА ВЗЛОМА...',
+  'Обход защиты: 5 усиленных контуров','',
+];
+async function runBoot(){
+  const boot=document.getElementById('boot'),el=document.getElementById('boot-text');
+  boot.classList.add('active');el.textContent='';
+  for(const line of bootLines){
+    for(let j=0;j<line.length;j++){el.textContent+=line[j];sfx.type();await sleep(12+Math.random()*15);}
+    el.textContent+='\n';
+    if(line.includes('[OK]'))sfx.boot();
+    if(line.includes('ВНИМАНИЕ')||line.includes('СБОЙ'))sfx.alarm();
+    await sleep(line===''?150:60+Math.random()*80);
+  }
+  await sleep(600);boot.classList.remove('active');
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ==================== CONSOLE ====================
+function logMsg(text,cls=''){
+  const c=document.getElementById('hack-console');const d=document.createElement('div');
+  d.className='log-line'+(cls?' '+cls:'');
+  const t=new Date(),ts=String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0')+':'+String(t.getSeconds()).padStart(2,'0');
+  d.textContent=`[${ts}] ${text}`;c.appendChild(d);c.scrollTop=c.scrollHeight;
+}
+
+// ==================== STAGES ====================
+function setStage(n,state){const d=document.querySelector(`.stage-dot[data-stage="${n}"]`);if(d)d.className='stage-dot '+state;}
+let currentGame=0;
+function cleanupGames(){
+  if(g1.raf){cancelAnimationFrame(g1.raf);g1.raf=0;}
+  g2.gen++;g2.timeouts.forEach(t=>clearTimeout(t));g2.timeouts=[];
+  if(g4.raf){cancelAnimationFrame(g4.raf);g4.raf=0;}
+  if(g5.runTimer){clearTimeout(g5.runTimer);g5.runTimer=0;}
+}
+function startGame(n){
+  cleanupGames();currentGame=n;
+  document.querySelectorAll('.game-screen').forEach(g=>g.classList.remove('active'));
+  document.getElementById('game'+n)?.classList.add('active');
+  setStage(n,'active');
+  document.getElementById('hack-status').textContent=`ЭТАП: ${n}/5`;
+  logMsg(`Инициализация контура ${n}...`,'warn');
+  switch(n){case 1:initGame1();break;case 2:initGame2();break;case 3:initGame3();break;case 4:initGame4();break;case 5:initGame5();break;}
+}
+async function completeGame(n){
+  cleanupGames();sfx.unlock();setStage(n,'done');
+  logMsg(`КОНТУР ${n}: ПРОЙДЕН`,'success');
+  document.getElementById('hack-status').textContent=`ПРОЙДЕНО: ${n}/5`;
+  if(n<5){await showTransition(n);startGame(n+1);}
+  else{await showTransition(5);showDocument();}
+}
+async function showTransition(n){
+  const el=document.getElementById('transition'),txt=document.getElementById('transition-text');
+  el.style.display='flex';txt.textContent='';
+  const lines=[`>>> КОНТУР ${n} ВЗЛОМАН <<<`,'','Извлечение фрагмента данных...',`Фрагмент ${n}/5 сохранён`,'',
+    n<5?'Переход к следующему контуру защиты...':'Сборка полного документа...'];
+  for(const l of lines){for(let i=0;i<l.length;i++){txt.textContent+=l[i];sfx.type();await sleep(18);}txt.textContent+='\n';await sleep(150);}
+  await sleep(800);el.style.display='none';
+}
+
+// ==================== DOCUMENT ====================
+function showDocument(){
+  cleanupGames();
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const doc=document.getElementById('document');doc.classList.add('active');
+  doc.innerHTML=`
+    <h2 class="glow-amber">ДОКУМЕНТ 3: РЕГЛАМЕНТ АППАРАТНОГО ВМЕШАТЕЛЬСТВА</h2>
+    <h3>Отдел полевых испытаний — Лабораторный комплекс "Радар"</h3>
+    <div class="doc-text">Для безопасного подключения к спящим узлам антенн и считывания остаточных данных инженерами Службы Периметра был разработан специализированный диагностический дешифратор
+
+Прибор позволяет обходить локальные аппаратные блокировки и напрямую взаимодействовать с уцелевшими серверами комплекса без риска случайного запуска защитных подсистем или автоматических турелей внутреннего периметра
+
+Полевая сборка устройства требует строгой синхронизации следующих компонентов: два армейских радиомодуля дециметрового диапазона, медный проводник сечением 2.5 мм, интеграция базовых логических микросхем типа К155ЛА3 и подключение уникального калиброванного мастер-процессора из резервов НИИ. Артефактная Бронедеталь.</div>
+    <div class="comment">&lt;Комментарий пользователя: guest_704&gt;
+
+Вот оно - наш золотой ключик. Если собрать эту приблуду по их схеме, можно будет подключиться к системе в обход Монолита и просто выключить их оборону
+
+Перевожу с научного на человеческий. Чтобы склепать этот дешифратор, нам нужны определённые радиоэлементы. На Юпитере, Полустанке оставлю нужные наборы инструментов для создания приблуды.
+
+Весь этот радиохлам легко выкупить у техников на любой крупной стоянке или выменять у сталкеров. С этим проблем не будет. Но вот артефактная бронедеталь, что нашел в рюкзаке у трупа учёного ... в обычной Зоне такого добра днем с огнем не сыщешь. Уверен, яйцеголовые держали такую ценную деталь под замком. Судя по отчётам, искать надо на Дикой Территории. Интересно где именно...</div>
+    <div class="password-block">
+      <div class="label">КЛЮЧ ДОСТУПА</div>
+      <div class="value glow-red">FACTOR-003</div>
+    </div>`;
+  sfx.success();
+}
+
+function angdiff(a,b){let d=((a-b+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;return Math.abs(d);}
+function clamp01(x){return Math.max(0,Math.min(1,x));}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+// ==================== GAME 1: SEQUENCER / FREQUENCY ====================
+let g1={raf:0,last:0,done:false,disp:120,from:120,to:120,phase:'stable',stableT:0,morphT:0,target:120,matched:false};
+const G1_STABLE=5.0,G1_MORPH=1.3;
+function g1CurFreq(){return +document.getElementById('sl-freq').value + +document.getElementById('sl-fine').value;}
+function g1RandFreq(prev){let f,guard=0;do{f=55+Math.floor(Math.random()*170);guard++;}while(prev!==undefined&&Math.abs(f-prev)<45&&guard<30);return f;}
+function g1EaseInOut(k){return k<0.5?2*k*k:1-Math.pow(-2*k+2,2)/2;}
+function initGame1(){
+  g1.done=false;g1.matched=false;
+  g1.disp=g1RandFreq();g1.from=g1.disp;g1.to=g1.disp;g1.target=Math.round(g1.disp);
+  g1.phase='stable';g1.stableT=0;g1.morphT=0;g1.last=performance.now();
+  document.getElementById('sl-freq').value=120;document.getElementById('val-freq').textContent='120 Гц';
+  document.getElementById('sl-fine').value=0;document.getElementById('val-fine').textContent='0';
+  const inp=document.getElementById('g1-input');inp.value='';inp.disabled=true;
+  document.getElementById('g1-status').textContent='';
+  document.getElementById('sl-freq').oninput=g1SliderUpd;
+  document.getElementById('sl-fine').oninput=g1SliderUpd;
+  logMsg('Несущая захвачена. Частота дрейфует каждые 5с — ловите совпадение');
+  cancelAnimationFrame(g1.raf);g1.raf=requestAnimationFrame(g1Frame);
+}
+function g1SliderUpd(){
+  document.getElementById('val-freq').textContent=document.getElementById('sl-freq').value+' Гц';
+  document.getElementById('val-fine').textContent=(+document.getElementById('sl-fine').value>0?'+':'')+document.getElementById('sl-fine').value;
+}
+function g1Wave(ctx,W,H,freq,phase,color){
+  const wl=8000/freq, amp=55;
+  ctx.strokeStyle=color;ctx.lineWidth=2;ctx.shadowColor=color;ctx.shadowBlur=8;
+  ctx.beginPath();
+  for(let x=0;x<=W;x++){const y=H/2-amp*Math.sin((x/wl)*Math.PI*2+phase);x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+  ctx.stroke();ctx.shadowBlur=0;
+}
+function g1Frame(now){
+  if(g1.done)return;
+  const cv=document.getElementById('g1-canvas');
+  if(!cv||!document.getElementById('game1').classList.contains('active')){g1.raf=0;return;}
+  const dt=Math.min(0.05,(now-g1.last)/1000);g1.last=now;
+  if(g1.phase==='stable'){
+    g1.stableT+=dt;
+    if(g1.stableT>=G1_STABLE){g1.phase='morph';g1.from=g1.disp;g1.to=g1RandFreq(Math.round(g1.disp));g1.morphT=0;logMsg('Несущая плавно смещается...','warn');}
+  }else{
+    g1.morphT+=dt;const k=clamp01(g1.morphT/G1_MORPH);g1.disp=g1.from+(g1.to-g1.from)*g1EaseInOut(k);
+    if(k>=1){g1.disp=g1.to;g1.phase='stable';g1.stableT=0;}
+  }
+  g1.target=Math.round(g1.disp);
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='rgba(0,255,65,0.08)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
+  g1Wave(ctx,W,H,g1.disp,0,'rgba(255,176,0,0.85)');
+  const cur=g1CurFreq();
+  g1Wave(ctx,W,H,cur,0,'rgba(0,255,65,0.9)');
+  const diff=Math.abs(cur-g1.disp),stable=(g1.phase==='stable');
+  const fr=document.getElementById('g1-freq'),inp=document.getElementById('g1-input');
+  if(diff<=2&&stable){
+    if(!g1.matched){g1.matched=true;sfx.key();logMsg('Частоты совмещены — значение определено','success');}
+    fr.className='ok';fr.textContent='ЧАСТОТА: '+g1.target+' Гц  [ЗАХВАТ]';
+    inp.disabled=false;
+  }else{
+    g1.matched=false;fr.className='bad';fr.textContent='ЧАСТОТА: '+cur+' Гц  ['+(stable?'РАССОГЛ.':'ДРЕЙФ')+']';
+    inp.disabled=true;
+  }
+  g1.raf=requestAnimationFrame(g1Frame);
+}
+function g1Confirm(){
+  if(g1.done)return;
+  const st=document.getElementById('g1-status'),inp=document.getElementById('g1-input');
+  if(!g1.matched){sfx.error();st.style.color='var(--red)';st.textContent='СНАЧАЛА СОВМЕСТИТЕ ВОЛНЫ (В СТАБИЛЬНОЙ ФАЗЕ)';return;}
+  const val=parseInt(inp.value,10);
+  if(val===g1.target){
+    g1.done=true;cancelAnimationFrame(g1.raf);g1.raf=0;
+    sfx.success();st.style.color='var(--green)';st.textContent='ЧАСТОТА ПОДТВЕРЖДЕНА — '+g1.target+' Гц';
+    logMsg('Частота зафиксирована: '+g1.target+' Гц','success');
+    setTimeout(()=>completeGame(1),700);
+  }else{
+    sfx.deny();st.style.color='var(--red)';st.textContent='НЕВЕРНОЕ ЗНАЧЕНИЕ';
+    logMsg('Ошибка ввода частоты','err');
+    inp.value='';
+  }
+}
+document.getElementById('g1-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();g1Confirm();}});
+
+// ==================== GAME 2: SIMON MELODY ====================
+const SIMON_TONES=[262,330,392,494,587,698];
+let g2={gen:0,timeouts:[],seq:[],step:0,input:0,playing:false};
+function initGame2(){
+  const grid=document.getElementById('simon-grid');grid.innerHTML='';
+  for(let i=0;i<6;i++){
+    const b=document.createElement('div');b.className='simon-btn c'+i;b.dataset.i=i;b.textContent='●';
+    b.addEventListener('click',()=>g2Press(i));
+    grid.appendChild(b);
+  }
+  g2.seq=[];for(let i=0;i<6;i++)g2.seq.push(Math.floor(Math.random()*6));
+  g2.step=1;g2.input=0;
+  document.getElementById('simon-stage').textContent='1';
+  logMsg('Звуковой ключ инициализирован. Повторяйте последовательность');
+  g2Play();
+}
+function g2Lit(i,dur=380){
+  const b=document.querySelector('#simon-grid .simon-btn[data-i="'+i+'"]');if(!b)return;
+  b.classList.add('lit');sfx.note(SIMON_TONES[i]);
+  const t=setTimeout(()=>b.classList.remove('lit'),dur);g2.timeouts.push(t);
+}
+function g2Play(){
+  const gen=g2.gen;g2.playing=true;g2.input=0;
+  document.getElementById('simon-grid').classList.add('locked');
+  document.getElementById('simon-hint').textContent='СЛУШАЙТЕ ПОСЛЕДОВАТЕЛЬНОСТЬ...';
+  document.getElementById('simon-stage').textContent=g2.step;
+  let delay=500;
+  for(let k=0;k<g2.step;k++){
+    const idx=g2.seq[k];
+    const t=setTimeout(()=>{if(gen!==g2.gen)return;g2Lit(idx);},delay);
+    g2.timeouts.push(t);delay+=560;
+  }
+  const t2=setTimeout(()=>{
+    if(gen!==g2.gen)return;
+    g2.playing=false;
+    document.getElementById('simon-grid').classList.remove('locked');
+    document.getElementById('simon-hint').textContent='ВАШ ХОД: ПОВТОРИТЕ '+g2.step+' '+noteWord(g2.step);
+  },delay);
+  g2.timeouts.push(t2);
+}
+function noteWord(n){const n10=n%10,n100=n%100;if(n100>=11&&n100<=14)return'сигналов';if(n10===1)return'сигнал';if(n10>=2&&n10<=4)return'сигнала';return'сигналов';}
+function g2Press(i){
+  if(g2.playing)return;
+  const b=document.querySelector('#simon-grid .simon-btn[data-i="'+i+'"]');
+  if(b){b.classList.add('lit');sfx.note(SIMON_TONES[i]);const t=setTimeout(()=>b.classList.remove('lit'),200);g2.timeouts.push(t);}
+  if(i===g2.seq[g2.input]){
+    g2.input++;
+    if(g2.input>=g2.step){
+      if(g2.step>=6){
+        document.getElementById('simon-grid').classList.add('locked');
+        document.getElementById('simon-hint').textContent='КЛЮЧ ПРИНЯТ';
+        sfx.success();logMsg('Звуковой ключ полностью повторён','success');
+        setTimeout(()=>completeGame(2),700);
+      }else{
+        g2.step++;sfx.click();logMsg('Верно. Длина цепочки: '+g2.step,'success');
+        const t=setTimeout(g2Play,700);g2.timeouts.push(t);
+      }
+    }
+  }else{
+    sfx.error();document.getElementById('simon-hint').textContent='ОШИБКА — СБРОС К ЭТАПУ 1';
+    logMsg('Неверный сигнал — прогресс сброшен','err');
+    g2.seq=[];for(let k=0;k<6;k++)g2.seq.push(Math.floor(Math.random()*6));
+    g2.step=1;g2.input=0;
+    const t=setTimeout(g2Play,900);g2.timeouts.push(t);
+  }
+}
+
+// ==================== GAME 3: WIRES ====================
+const WCOLORS=[
+  {n:'Красный',key:'Каждый',c:'#ff0033'},
+  {n:'Оранжевый',key:'Охотник',c:'#ff8800'},
+  {n:'Жёлтый',key:'Желает',c:'#ffee00'},
+  {n:'Зелёный',key:'Знать',c:'#00ff41'},
+  {n:'Голубой',key:'Где',c:'#00e5ff'},
+  {n:'Синий',key:'Сидит',c:'#2a6bff'},
+  {n:'Фиолетовый',key:'Фазан',c:'#aa44ff'}
+];
+let g3={left:[],right:[],conns:[],phase:1,drag:null,cutIdx:0,done:false};
+const G3N=WCOLORS.length;
+function g3NodeY(i){return 34+i*(430-68)/(G3N-1);}
+function initGame3(){
+  g3.phase=1;g3.conns=[];g3.drag=null;g3.cutIdx=0;g3.done=false;
+  g3.left=shuffle([...Array(G3N).keys()]);   // color index at each left slot
+  g3.right=shuffle([...Array(G3N).keys()]);
+  document.getElementById('g3-phase').textContent='ФАЗА 1: СОЕДИНИТЕ ПРОВОДА ПО ЦВЕТАМ';
+  document.getElementById('g3-hint').textContent='Протяните провод от точки слева к точке того же цвета справа';
+  document.getElementById('g3-status').textContent='';
+  const leg=document.getElementById('wire-legend');leg.innerHTML='';
+  WCOLORS.forEach(w=>{const s=document.createElement('span');s.innerHTML='<b style="color:'+w.c+'">■</b> '+w.key+' — '+w.n;leg.appendChild(s);});
+  g3Render();
+  logMsg('Шлейф вскрыт. Соедините жилы по цветам, затем режьте по радуге','warn');
+}
+function g3Render(){
+  const wrap=document.getElementById('wire-wrap');
+  wrap.querySelectorAll('.wire-node').forEach(n=>n.remove());
+  const W=580;
+  // left nodes
+  g3.left.forEach((col,slot)=>{
+    const node=mkNode(col,40,g3NodeY(slot),'L',slot);wrap.appendChild(node);
+  });
+  g3.right.forEach((col,slot)=>{
+    const node=mkNode(col,W-40,g3NodeY(slot),'R',slot);wrap.appendChild(node);
+  });
+  g3DrawWires();
+}
+function mkNode(col,x,y,side,slot){
+  const n=document.createElement('div');n.className='wire-node';
+  n.style.left=x+'px';n.style.top=y+'px';n.style.background=WCOLORS[col].c;n.style.color=WCOLORS[col].c;
+  n.dataset.col=col;n.dataset.side=side;n.dataset.slot=slot;n.dataset.x=x;n.dataset.y=y;
+  const connected=g3.conns.some(c=>(side==='L'?c.lslot===slot:c.rslot===slot));
+  if(g3.phase===1){
+    if(connected){n.classList.add('done');}
+    else if(side==='L'){n.addEventListener('pointerdown',g3DragStart);}
+  }else if(g3.phase===2){
+    const cut=g3.conns.find(c=>(side==='L'?c.lslot===slot:c.rslot===slot))?.cut;
+    if(cut){n.classList.add('cut');}
+    else{n.classList.add('done');n.style.cursor='pointer';n.addEventListener('pointerdown',()=>g3Cut(col));}
+  }
+  return n;
+}
+function nodeCenter(side,slot){
+  const x=side==='L'?40:580-40;return {x,y:g3NodeY(slot)};
+}
+function g3DrawWires(){
+  const svg=document.getElementById('wire-svg');svg.setAttribute('viewBox','0 0 580 430');svg.innerHTML='';
+  g3.conns.forEach(c=>{
+    if(c.cut)return;
+    const a=nodeCenter('L',c.lslot),b=nodeCenter('R',c.rslot);
+    const mid=(a.x+b.x)/2;
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',`M ${a.x} ${a.y} C ${mid} ${a.y}, ${mid} ${b.y}, ${b.x} ${b.y}`);
+    path.setAttribute('fill','none');path.setAttribute('stroke',WCOLORS[c.col].c);
+    path.setAttribute('stroke-width','4');path.setAttribute('opacity','0.85');
+    svg.appendChild(path);
+  });
+  if(g3.drag){
+    const a=nodeCenter('L',g3.drag.lslot);
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',a.x);line.setAttribute('y1',a.y);
+    line.setAttribute('x2',g3.drag.x);line.setAttribute('y2',g3.drag.y);
+    line.setAttribute('stroke',WCOLORS[g3.drag.col].c);line.setAttribute('stroke-width','3');
+    line.setAttribute('stroke-dasharray','6 5');line.setAttribute('opacity','0.9');
+    document.getElementById('wire-svg').appendChild(line);
+  }
+}
+function g3RelPos(e){
+  const r=document.getElementById('wire-wrap').getBoundingClientRect();
+  return {x:e.clientX-r.left,y:e.clientY-r.top};
+}
+function g3DragStart(e){
+  if(g3.phase!==1||g3.done)return;
+  e.preventDefault();
+  const slot=+e.currentTarget.dataset.slot,col=+e.currentTarget.dataset.col;
+  const p=g3RelPos(e);
+  g3.drag={lslot:slot,col,x:p.x,y:p.y};
+  sfx.click();
+  window.addEventListener('pointermove',g3DragMove);
+  window.addEventListener('pointerup',g3DragEnd);
+  g3DrawWires();
+}
+function g3DragMove(e){
+  if(!g3.drag)return;const p=g3RelPos(e);g3.drag.x=p.x;g3.drag.y=p.y;g3DrawWires();
+}
+function g3DragEnd(e){
+  window.removeEventListener('pointermove',g3DragMove);
+  window.removeEventListener('pointerup',g3DragEnd);
+  if(!g3.drag)return;
+  const p=g3RelPos(e);
+  // find nearest right node
+  let best=-1,bd=1e9;
+  g3.right.forEach((col,slot)=>{
+    const c=nodeCenter('R',slot);const d=Math.hypot(c.x-p.x,c.y-p.y);
+    if(d<bd){bd=d;best=slot;}
+  });
+  const drag=g3.drag;g3.drag=null;
+  if(best>=0&&bd<32){
+    const rcol=g3.right[best];
+    const rTaken=g3.conns.some(c=>c.rslot===best);
+    if(rTaken){sfx.error();flashStatus3('Точка уже занята','var(--red)');}
+    else if(rcol===drag.col){
+      g3.conns.push({lslot:drag.lslot,rslot:best,col:drag.col,cut:false});
+      sfx.key();logMsg('Жила '+WCOLORS[drag.col].n.toLowerCase()+' соединена','success');
+      if(g3.conns.length>=G3N){g3EnterCut();}
+    }else{
+      sfx.error();flashStatus3('Цвета не совпадают','var(--red)');logMsg('Ошибка: цвета жил не совпали','err');
+    }
+  }
+  g3Render();
+}
+function flashStatus3(txt,col){const st=document.getElementById('g3-status');st.style.color=col;st.textContent=txt;}
+function g3EnterCut(){
+  g3.phase=2;g3.cutIdx=0;
+  document.getElementById('g3-phase').textContent='ФАЗА 2: РЕЖЬТЕ ПО ПОРЯДКУ РАДУГИ';
+  sfx.unlock();logMsg('Все жилы соединены. Снимаю защитный контур','warn');
+  g3UpdCutHint();g3Render();
+}
+function g3UpdCutHint(){
+  document.getElementById('g3-hint').textContent='Перережьте жилы в правильной последовательности';
+}
+function g3Cut(col){
+  if(g3.phase!==2||g3.done)return;
+  if(col===g3.cutIdx){
+    const c=g3.conns.find(x=>x.col===col);if(c)c.cut=true;
+    sfx.surge();logMsg('Жила '+WCOLORS[col].n.toLowerCase()+' перерезана ('+(g3.cutIdx+1)+'/'+G3N+')','success');
+    g3.cutIdx++;
+    if(g3.cutIdx>=G3N){
+      g3.done=true;flashStatus3('ЗАЩИТНЫЙ КОНТУР СНЯТ','var(--green)');
+      sfx.success();logMsg('Троян обезврежен. Шлейф чист','success');
+      g3Render();setTimeout(()=>completeGame(3),700);
+      return;
+    }
+    g3UpdCutHint();g3Render();
+  }else{
+    sfx.deny();flashStatus3('НЕВЕРНЫЙ ПОРЯДОК — НАЧНИТЕ РЕЗ ЗАНОВО','var(--red)');
+    logMsg('Нарушен порядок реза — контур восстановлен','err');
+    g3.conns.forEach(x=>x.cut=false);g3.cutIdx=0;
+    setTimeout(()=>{g3UpdCutHint();g3Render();},700);
+    g3Render();
+  }
+}
+
+// ==================== GAME 4: CORE STABILIZE ====================
+let g4={raf:0,last:0,done:false,bars:[]};
+const G4ZONE_LO=0.72,G4ZONE_HI=1.0;
+function initGame4(){
+  g4.done=false;g4.last=performance.now();
+  g4.bars=[
+    {lvl:0.30,decay:0.10},
+    {lvl:0.30,decay:0.13},
+    {lvl:0.30,decay:0.11},
+    {lvl:0.30,decay:0.15}
+  ];
+  const wrap=document.getElementById('core-bars');wrap.innerHTML='';
+  g4.bars.forEach((b,i)=>{
+    const bar=document.createElement('div');bar.className='core-bar';bar.dataset.i=i;
+    bar.innerHTML='<div class="lbl">К'+(i+1)+'</div><div class="zone"></div><div class="fill"></div><div class="cap"></div>';
+    const zone=bar.querySelector('.zone');
+    zone.style.bottom=(G4ZONE_LO*100)+'%';zone.style.height=((G4ZONE_HI-G4ZONE_LO)*100)+'%';
+    bar.addEventListener('pointerdown',e=>{e.preventDefault();g4Boost(i);});
+    wrap.appendChild(bar);
+  });
+  document.getElementById('core-status').textContent='';
+  logMsg('Ядро нестабильно. Поднимите заряд всех каналов в зелёную зону');
+  cancelAnimationFrame(g4.raf);g4.raf=requestAnimationFrame(g4Frame);
+}
+function g4Boost(i){
+  if(g4.done)return;const b=g4.bars[i];if(!b)return;
+  b.lvl=Math.min(1,b.lvl+0.16);sfx.step();
+}
+function g4Frame(now){
+  if(g4.done)return;
+  const scr=document.getElementById('game4');
+  if(!scr||!scr.classList.contains('active')){g4.raf=0;return;}
+  const dt=Math.min(0.05,(now-g4.last)/1000);g4.last=now;
+  const wrap=document.getElementById('core-bars');
+  let cnt=0;
+  g4.bars.forEach((b,i)=>{
+    b.lvl=Math.max(0,b.lvl-b.decay*dt);
+    const bar=wrap.querySelector('.core-bar[data-i="'+i+'"]');if(!bar)return;
+    const fill=bar.querySelector('.fill'),cap=bar.querySelector('.cap');
+    fill.style.height=(b.lvl*100)+'%';cap.style.bottom=(b.lvl*100)+'%';
+    const inz=b.lvl>=G4ZONE_LO;
+    bar.classList.toggle('ingreen',inz);
+    if(inz)cnt++;
+  });
+  const allIn=cnt===4;
+  document.getElementById('core-hold').textContent='В ЗЕЛЁНОЙ ЗОНЕ: '+cnt+' / 4';
+  document.getElementById('core-hold').style.color=allIn?'var(--green)':'var(--amber)';
+  if(allIn){
+    g4.done=true;cancelAnimationFrame(g4.raf);g4.raf=0;
+    const st=document.getElementById('core-status');st.style.color='var(--green)';st.textContent='ЯДРО СТАБИЛИЗИРОВАНО';
+    sfx.success();logMsg('Реакция стабилизирована','success');
+    setTimeout(()=>completeGame(4),700);return;
+  }
+  g4.raf=requestAnimationFrame(g4Frame);
+}
+
+// ==================== GAME 5: ROBOT ROUTE ====================
+let g5={R:6,C:7,walls:[],start:[0,0],goal:[0,0],prog:[],runTimer:0,running:false,done:false};
+const DIRS={'↑':[-1,0],'↓':[1,0],'←':[0,-1],'→':[0,1]};
+function initGame5(){
+  g5.done=false;g5.running=false;g5.prog=[];
+  g5GenLevel();
+  const pad=document.getElementById('robot-pad');pad.innerHTML='';
+  const layout=['','↑','','←','','→','','↓',''];
+  layout.forEach(sym=>{
+    const b=document.createElement('button');
+    if(sym===''){b.className='rbtn empty';}
+    else{b.className='rbtn';b.textContent=sym;b.onclick=()=>robotAdd(sym);}
+    pad.appendChild(b);
+  });
+  document.getElementById('robot-status').textContent='';
+  robotRenderQueue();g5RenderGrid(g5.start,false);
+  logMsg('Дрон на старте. Задайте маршрут стрелками и запустите');
+}
+function g5GenLevel(){
+  const R=g5.R,C=g5.C;
+  let attempts=0;
+  while(attempts++<200){
+    g5.walls=[];
+    g5.start=[R-1,0];g5.goal=[0,C-1];
+    for(let r=0;r<R;r++)for(let c=0;c<C;c++){
+      if((r===g5.start[0]&&c===g5.start[1])||(r===g5.goal[0]&&c===g5.goal[1]))continue;
+      if(Math.random()<0.26)g5.walls.push(r+','+c);
+    }
+    if(g5Solvable())break;
+  }
+}
+function g5Solvable(){
+  const R=g5.R,C=g5.C,wset=new Set(g5.walls);
+  const vis=Array.from({length:R},()=>Array(C).fill(false));
+  const q=[g5.start];vis[g5.start[0]][g5.start[1]]=true;
+  while(q.length){
+    const [r,c]=q.shift();
+    if(r===g5.goal[0]&&c===g5.goal[1])return true;
+    for(const d in DIRS){const nr=r+DIRS[d][0],nc=c+DIRS[d][1];
+      if(nr<0||nr>=R||nc<0||nc>=C||vis[nr][nc]||wset.has(nr+','+nc))continue;
+      vis[nr][nc]=true;q.push([nr,nc]);}
+  }
+  return false;
+}
+function g5RenderGrid(pos,crash){
+  const grid=document.getElementById('robot-grid');
+  grid.style.gridTemplateColumns='repeat('+g5.C+',48px)';
+  grid.innerHTML='';const wset=new Set(g5.walls);
+  for(let r=0;r<g5.R;r++)for(let c=0;c<g5.C;c++){
+    const cell=document.createElement('div');cell.className='rcell';
+    if(wset.has(r+','+c))cell.classList.add('wall');
+    if(r===g5.start[0]&&c===g5.start[1])cell.classList.add('start');
+    if(r===g5.goal[0]&&c===g5.goal[1])cell.classList.add('target');
+    if(pos&&r===pos[0]&&c===pos[1]){cell.classList.add('robot');if(crash)cell.classList.add('crash');}
+    grid.appendChild(cell);
+  }
+}
+function robotAdd(sym){
+  if(g5.running||g5.done)return;
+  if(g5.prog.length>=24)return;
+  g5.prog.push(sym);sfx.click();robotRenderQueue();
+}
+function robotUndo(){if(g5.running||g5.done)return;g5.prog.pop();sfx.click();robotRenderQueue();}
+function robotClear(){if(g5.running||g5.done)return;g5.prog=[];sfx.click();robotRenderQueue();document.getElementById('robot-status').textContent='';g5RenderGrid(g5.start,false);}
+function robotRenderQueue(){
+  const q=document.getElementById('robot-queue');
+  q.textContent=g5.prog.length?g5.prog.join(' '):'— программа пуста —';
+  q.style.color=g5.prog.length?'var(--amber)':'#335533';
+}
+function robotRun(){
+  if(g5.running||g5.done)return;
+  if(!g5.prog.length){sfx.error();const st=document.getElementById('robot-status');st.style.color='var(--red)';st.textContent='ПРОГРАММА ПУСТА';return;}
+  g5.running=true;
+  const wset=new Set(g5.walls);
+  let pos=[...g5.start],i=0;
+  logMsg('Запуск дрона: '+g5.prog.join(''),'warn');
+  const stEl=document.getElementById('robot-status');stEl.style.color='var(--amber)';stEl.textContent='ВЫПОЛНЕНИЕ...';
+  function stepFn(){
+    if(i>=g5.prog.length){
+      g5.running=false;
+      if(pos[0]===g5.goal[0]&&pos[1]===g5.goal[1]){robotWin();}
+      else{sfx.deny();stEl.style.color='var(--red)';stEl.textContent='ДРОН НЕ ДОСТИГ МАЯКА';logMsg('Маршрут окончен не на маяке','err');}
+      return;
+    }
+    const d=DIRS[g5.prog[i]];const nr=pos[0]+d[0],nc=pos[1]+d[1];
+    if(nr<0||nr>=g5.R||nc<0||nc>=g5.C||wset.has(nr+','+nc)){
+      g5RenderGrid(pos,true);sfx.error();g5.running=false;
+      stEl.style.color='var(--red)';stEl.textContent='СТОЛКНОВЕНИЕ — ДРОН СБРОШЕН';
+      logMsg('Дрон врезался в препятствие на шаге '+(i+1),'err');
+      setTimeout(()=>g5RenderGrid(g5.start,false),900);
+      return;
+    }
+    pos=[nr,nc];sfx.step();g5RenderGrid(pos,false);
+    if(pos[0]===g5.goal[0]&&pos[1]===g5.goal[1]){g5.running=false;robotWin();return;}
+    i++;g5.runTimer=setTimeout(stepFn,330);
+  }
+  g5.runTimer=setTimeout(stepFn,330);
+}
+function robotWin(){
+  g5.done=true;
+  const stEl=document.getElementById('robot-status');stEl.style.color='var(--green)';stEl.textContent='МАЯК ДОСТИГНУТ';
+  sfx.success();logMsg('Дрон достиг маяка. Диагностика завершена','success');
+  setTimeout(()=>completeGame(5),700);
+}
+</script>
+</body>
+</html>
